@@ -14,8 +14,8 @@ REQUIRED_FIELDS = ["name", "tier", "stability", "dependencies", "lastVerified"]
 OPTIONAL_FIELDS = ["tags", "ci", "links"]
 # 'Tier' must be 'core' or 'third-party'.
 TIER_OPTIONS = ["core", "third_party"]
-# 'Stability' must be 'alpha', 'beta', or 'stable'.
-STABILITY_OPTIONS = ["alpha", "beta", "stable"]
+# 'Stability' must be 'alpha', 'beta', 'stable', or 'dev preview'.
+STABILITY_OPTIONS = ["alpha", "beta", "stable", "dev preview"]
 # 'Dependencies' must contain 'kubeflow' and can contain 'external_services'.
 DEPENDENCIES_FIELDS = ["kubeflow", "external_services"]
 # A given dependency must contain 'name' and 'version' fields.
