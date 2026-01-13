@@ -11,16 +11,16 @@ while preserving their original capabilities.
 """
 
 import kfp
-import kfp.kubernetes
 from kfp import dsl
+import kfp.kubernetes
 
 # Import reusable training component
 from kfp_components.components.training.finetuning import train_model
 
 # Import pipeline-specific (non-reusable) components
-from pipelines.training.osft.components.dataset_download import dataset_download
-from pipelines.training.osft.components.eval import universal_llm_evaluator
-from pipelines.training.osft.components.model_registry import model_registry
+from .components.dataset_download import dataset_download
+from .components.eval import universal_llm_evaluator
+from .components.model_registry import model_registry
 
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
@@ -43,9 +43,9 @@ PIPELINE_NAME = "osft-pipeline"
                     "accessModes": PVC_ACCESS_MODES,
                     "storageClassName": PVC_STORAGE_CLASS,
                 }
-            )
+            ),
         ),
-    )
+    ),
 )
 def osft_pipeline(
     # =========================================================================
@@ -62,7 +62,6 @@ def osft_pipeline(
     phase_02_train_man_train_workers: int = 1,
     phase_03_eval_man_eval_tasks: list = ["arc_easy"],
     phase_04_registry_man_address: str = "",
-    phase_04_registry_man_reg_author: str = "pipeline",
     phase_04_registry_man_reg_name: str = "osft-model",
     phase_04_registry_man_reg_version: str = "1.0.0",
     # =========================================================================
@@ -70,47 +69,20 @@ def osft_pipeline(
     # =========================================================================
     phase_01_dataset_opt_hf_token: str = "",
     phase_01_dataset_opt_subset: int = 0,
-    phase_02_train_opt_annotations: str = "",
-    phase_02_train_opt_cpu: str = "8",
-    phase_02_train_opt_env_vars: str = "",
-    phase_02_train_opt_hf_token: str = "",
-    phase_02_train_opt_labels: str = "",
     phase_02_train_opt_learning_rate: float = 5e-6,
-    phase_02_train_opt_lr_scheduler: str = "cosine",
-    phase_02_train_opt_lr_scheduler_kwargs: str = "",
-    phase_02_train_opt_lr_warmup: int = 0,
     phase_02_train_opt_max_seq_len: int = 8192,
-    phase_02_train_opt_memory: str = "32Gi",
-    phase_02_train_opt_num_procs: str = "auto",
-    phase_02_train_opt_processed_data: bool = False,
-    phase_02_train_opt_pull_secret: str = "",
-    phase_02_train_opt_save_epoch: bool = False,
-    phase_02_train_opt_save_final: bool = True,
-    phase_02_train_opt_seed: int = 42,
-    phase_02_train_opt_target_patterns: str = "",
-    phase_02_train_opt_unmask: bool = False,
     phase_02_train_opt_use_liger: bool = True,
-    phase_03_eval_opt_batch: str = "auto",
-    phase_03_eval_opt_gen_kwargs: dict = {},
-    phase_03_eval_opt_limit: int = -1,
-    phase_03_eval_opt_log_samples: bool = True,
-    phase_03_eval_opt_model_args: dict = {},
-    phase_03_eval_opt_verbosity: str = "INFO",
-    phase_04_registry_opt_description: str = "",
-    phase_04_registry_opt_format_name: str = "pytorch",
     phase_04_registry_opt_format_version: str = "1.0",
-    phase_04_registry_opt_port: int = 8080,
 ):
     """OSFT Training Pipeline - Continual learning without catastrophic forgetting.
 
     A 4-stage ML pipeline for fine-tuning language models with OSFT:
-
     1) Dataset Download - Prepares training data from HuggingFace, S3, HTTP, or PVC
     2) OSFT Training - Fine-tunes using mini-trainer backend (orthogonal subspace)
     3) Evaluation - Evaluates with lm-eval harness (MMLU, GSM8K, etc.)
     4) Model Registry - Registers trained model to Kubeflow Model Registry
 
-Args:
+    Args:
         phase_01_dataset_man_data_uri: [REQUIRED] Dataset location (hf://dataset, s3://bucket/path, https://url, pvc://path)
         phase_01_dataset_man_data_split: Train/eval split ratio (0.9 = 90% train, 10% eval)
         phase_02_train_man_train_batch: Effective batch size (samples per optimizer step)
@@ -122,42 +94,16 @@ Args:
         phase_02_train_man_train_workers: Number of training pods. OSFT efficient single-node (1)
         phase_03_eval_man_eval_tasks: lm-eval tasks (arc_easy, mmlu, gsm8k, hellaswag, etc.)
         phase_04_registry_man_address: Model Registry address (empty = skip registration)
-        phase_04_registry_man_reg_author: Author name for the registered model
-        phase_04_registry_man_reg_name: Model name in registry
         phase_04_registry_man_reg_version: Semantic version (major.minor.patch)
+        phase_04_registry_man_reg_name: Model name in registry
         phase_01_dataset_opt_hf_token: HuggingFace token for gated/private datasets
         phase_01_dataset_opt_subset: Limit to first N examples (0 = all)
-        phase_02_train_opt_annotations: K8s annotations (key=val,...)
-        phase_02_train_opt_cpu: CPU cores per worker. 8 recommended for OSFT
-        phase_02_train_opt_env_vars: Env vars (KEY=VAL,...). OSFT typically doesn't need special vars
-        phase_02_train_opt_hf_token: HuggingFace token for gated models (Llama, Mistral)
-        phase_02_train_opt_labels: K8s labels (key=val,...)
         phase_02_train_opt_learning_rate: Learning rate (1e-6 to 1e-4). 5e-6 recommended
-        phase_02_train_opt_lr_scheduler: [OSFT] LR schedule (cosine, linear, constant)
-        phase_02_train_opt_lr_scheduler_kwargs: [OSFT] Extra scheduler params (key=val,...)
-        phase_02_train_opt_lr_warmup: Warmup steps before full LR
         phase_02_train_opt_max_seq_len: Max sequence length in tokens
-        phase_02_train_opt_memory: RAM per worker. 32Gi usually sufficient for OSFT
-        phase_02_train_opt_num_procs: Processes per worker ('auto' = one per GPU)
-        phase_02_train_opt_processed_data: [OSFT] True if dataset already has tokenized input_ids
-        phase_02_train_opt_pull_secret: K8s pull secret for private registries
-        phase_02_train_opt_save_epoch: Save checkpoint at each epoch. Usually False for OSFT
-        phase_02_train_opt_save_final: [OSFT] Save final checkpoint after all epochs
-        phase_02_train_opt_seed: Random seed for reproducibility
-        phase_02_train_opt_target_patterns: [OSFT] Module patterns to unfreeze (empty=auto)
-        phase_02_train_opt_unmask: [OSFT] Unmask all tokens (False=assistant only)
         phase_02_train_opt_use_liger: [OSFT] Enable Liger kernel optimizations. Recommended
-        phase_03_eval_opt_batch: Eval batch size ('auto' or integer)
-        phase_03_eval_opt_gen_kwargs: Generation params dict (max_tokens, temperature)
-        phase_03_eval_opt_limit: Max samples per task (-1 = all)
-        phase_03_eval_opt_log_samples: Log individual predictions
-        phase_03_eval_opt_model_args: Model init args dict (dtype, gpu_memory_utilization)
-        phase_03_eval_opt_verbosity: Logging level (DEBUG, INFO, WARNING, ERROR)
-        phase_04_registry_opt_description: Model description
-        phase_04_registry_opt_format_name: Model format (pytorch, onnx, tensorflow)
         phase_04_registry_opt_format_version: Model format version
-        phase_04_registry_opt_port: Model registry server port
     """
+
     # =========================================================================
     # Stage 1: Dataset Download
     # =========================================================================
@@ -174,10 +120,10 @@ Args:
 
     kfp.kubernetes.use_secret_as_env(
         dataset_download_task,
-        secret_name='minio-secret',
+        secret_name="minio-secret",
         secret_key_to_env={
-            'AWS_ACCESS_KEY_ID': 'AWS_ACCESS_KEY_ID',
-            'AWS_SECRET_ACCESS_KEY': 'AWS_SECRET_ACCESS_KEY',
+            "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
         },
         optional=True,
     )
@@ -193,39 +139,31 @@ Args:
         training_algorithm="OSFT",  # Hardcoded for OSFT pipeline
         training_backend="mini-trainer",  # Hardcoded for OSFT
         training_unfreeze_rank_ratio=phase_02_train_man_train_unfreeze,
+        training_osft_memory_efficient_init=True,
         # Hyperparameters
         training_effective_batch_size=phase_02_train_man_train_batch,
         training_max_tokens_per_gpu=phase_02_train_man_train_tokens,
         training_max_seq_len=phase_02_train_opt_max_seq_len,
         training_learning_rate=phase_02_train_opt_learning_rate,
-        training_target_patterns=phase_02_train_opt_target_patterns,
-        training_seed=phase_02_train_opt_seed,
+        # training_target_patterns=phase_02_train_opt_target_patterns,
+        training_seed=42,
         training_num_epochs=phase_02_train_man_train_epochs,
         # OSFT-specific optimizations
         training_use_liger=phase_02_train_opt_use_liger,
-        training_use_processed_dataset=phase_02_train_opt_processed_data,
-        training_unmask_messages=phase_02_train_opt_unmask,
-        # Learning rate scheduler (OSFT)
-        training_lr_scheduler=phase_02_train_opt_lr_scheduler,
-        training_lr_warmup_steps=phase_02_train_opt_lr_warmup,
-        training_lr_scheduler_kwargs=phase_02_train_opt_lr_scheduler_kwargs,
+        training_lr_scheduler="cosine",
         # Saving (OSFT)
-        training_checkpoint_at_epoch=phase_02_train_opt_save_epoch,
-        training_save_final_checkpoint=phase_02_train_opt_save_final,
+        training_checkpoint_at_epoch=True,
+        training_save_final_checkpoint=True,
         # Not used by OSFT - pass empty/zero
         training_save_samples=0,
         training_accelerate_full_state_at_epoch=False,
         # Environment
-        training_hf_token=phase_02_train_opt_hf_token,
-        training_pull_secret=phase_02_train_opt_pull_secret,
-        training_envs=phase_02_train_opt_env_vars,
-        training_metadata_labels=phase_02_train_opt_labels,
-        training_metadata_annotations=phase_02_train_opt_annotations,
+        training_hf_token=phase_01_dataset_opt_hf_token,
         # Resources
-        training_resource_cpu_per_worker=phase_02_train_opt_cpu,
+        training_resource_cpu_per_worker="8",
         training_resource_gpu_per_worker=phase_02_train_man_train_gpu,
-        training_resource_memory_per_worker=phase_02_train_opt_memory,
-        training_resource_num_procs_per_worker=phase_02_train_opt_num_procs,
+        training_resource_memory_per_worker="32Gi",
+        training_resource_num_procs_per_worker="auto",
         training_resource_num_workers=phase_02_train_man_train_workers,
     )
     training_task.set_caching_options(False)
@@ -247,12 +185,12 @@ Args:
         model_artifact=training_task.outputs["output_model"],
         eval_dataset=dataset_download_task.outputs["eval_dataset"],
         task_names=phase_03_eval_man_eval_tasks,
-        batch_size=phase_03_eval_opt_batch,
-        limit=phase_03_eval_opt_limit,
-        log_samples=phase_03_eval_opt_log_samples,
-        verbosity=phase_03_eval_opt_verbosity,
-        model_args=phase_03_eval_opt_model_args,
-        gen_kwargs=phase_03_eval_opt_gen_kwargs,
+        batch_size="auto",
+        limit=int(-1),
+        log_samples=True,
+        verbosity="INFO",
+        model_args={},
+        gen_kwargs={},
     )
     eval_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(eval_task, "IfNotPresent")
@@ -278,13 +216,13 @@ Args:
         eval_metrics=eval_task.outputs["output_metrics"],
         eval_results=eval_task.outputs["output_results"],
         registry_address=phase_04_registry_man_address,
-        registry_port=phase_04_registry_opt_port,
+        registry_port=8080,
         model_name=phase_04_registry_man_reg_name,
         model_version=phase_04_registry_man_reg_version,
-        model_format_name=phase_04_registry_opt_format_name,
+        model_format_name="pytorch",
         model_format_version=phase_04_registry_opt_format_version,
-        model_description=phase_04_registry_opt_description,
-        author=phase_04_registry_man_reg_author,
+        model_description="",
+        author="pipeline",
         shared_log_file="pipeline_log.txt",
         source_pipeline_name=PIPELINE_NAME,
         source_pipeline_run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
@@ -300,6 +238,6 @@ if __name__ == "__main__":
         pipeline_func=osft_pipeline,
         package_path=__file__.replace(".py", ".yaml"),
     )
-    print("OSFT Pipeline compiled successfully!")
+    print(f"OSFT Pipeline compiled successfully!")
     print(f"  PVC Size: {PVC_SIZE}")
     print(f"  Storage Class: {PVC_STORAGE_CLASS}")
