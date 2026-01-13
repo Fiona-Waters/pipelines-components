@@ -12,7 +12,10 @@ from semver import Version
 REQUIRED_FIELDS = ["name", "stability", "dependencies", "lastVerified"]
 # The following fields are optional in a metadata.yaml file.
 OPTIONAL_FIELDS = ["tags", "ci", "links"]
-STABILITY_OPTIONS = ["experimental", "alpha", "beta", "stable"]
+# 'Tier' must be 'core' or 'third-party'.
+TIER_OPTIONS = ["core", "third_party"]
+# 'Stability' must be 'alpha', 'beta', 'stable', or 'dev preview'.
+STABILITY_OPTIONS = ["alpha", "beta", "stable", "dev preview"]
 # 'Dependencies' must contain 'kubeflow' and can contain 'external_services'.
 DEPENDENCIES_FIELDS = ["kubeflow", "external_services"]
 # A given dependency must contain 'name' and 'version' fields.
