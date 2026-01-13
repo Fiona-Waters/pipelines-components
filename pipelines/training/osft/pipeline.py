@@ -7,10 +7,19 @@ This is a placeholder for future implementation.
 from kfp import dsl
 
 
-@dsl.component(base_image="python:3.11")
-def placeholder_task() -> str:
-    """Placeholder task for pipeline structure."""
-    return "OSFT pipeline placeholder - to be implemented"
+# Import pipeline-specific (non-reusable) components
+from pipelines.training.osft.components.dataset_download import dataset_download
+from pipelines.training.osft.components.eval import universal_llm_evaluator
+from pipelines.training.osft.components.model_registry import model_registry
+
+# =============================================================================
+# PVC Configuration (COMPILE-TIME settings)
+# =============================================================================
+PVC_SIZE = "10Gi"
+PVC_STORAGE_CLASS = "nfs-csi"
+PVC_ACCESS_MODES = ["ReadWriteMany"]
+PIPELINE_NAME = "osft-pipeline"
+# =============================================================================
 
 
 @dsl.pipeline(
