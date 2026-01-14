@@ -1,4 +1,5 @@
 name: dataset_download
+tier: core
 stability: experimental
 dependencies:
   kubeflow:

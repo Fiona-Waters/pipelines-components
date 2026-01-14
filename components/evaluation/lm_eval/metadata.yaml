@@ -1,4 +1,5 @@
 name: lm_eval
+tier: core
 stability: experimental
 dependencies:
   kubeflow:

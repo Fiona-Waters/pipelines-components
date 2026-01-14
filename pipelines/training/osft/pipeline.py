@@ -6,11 +6,11 @@ This is a placeholder for future implementation.
 
 from kfp import dsl
 
-
-# Import pipeline-specific (non-reusable) components
-from pipelines.training.osft.components.dataset_download import dataset_download
-from pipelines.training.osft.components.eval import universal_llm_evaluator
-from pipelines.training.osft.components.model_registry import model_registry
+# Import reusable components
+from components.data_processing.dataset_download import dataset_download
+from components.deployment.model_registry import model_registry
+from components.evaluation.lm_eval import universal_llm_evaluator
+from components.training.finetuning import train_model
 
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
