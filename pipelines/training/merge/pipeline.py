@@ -4,9 +4,20 @@ A simple pipeline that merges two models using MergeKit.
 Takes individual parameters and builds the config internally.
 """
 
+import os
+import sys
+
 import kfp
 import kfp.kubernetes
 from kfp import dsl
+
+# Add repo root to path for component imports
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+sys.path.insert(0, _REPO_ROOT)
+
+from components.deployment.kubeflow_model_registry import (
+    kubeflow_model_registry as model_registry,
+)
 
 # =============================================================================
 # Pipeline Configuration
@@ -429,8 +440,11 @@ def merge_pipeline(
     merge_method: str = "slerp",
     t: float = 0.2,
     dtype: str = "float16",
+    # Model Registry (optional - leave registry_address empty to skip)
+    registry_model_name: str = "",
+    registry_address: str = "",
 ):
-    """Model Merge Pipeline - Merge two LLMs using MergeKit with evaluation.
+    """Model Merge Pipeline - Merge two LLMs using MergeKit with evaluation and optional registry.
 
     Args:
         model_1: First model (HuggingFace ID). Used as base_model.
@@ -438,6 +452,8 @@ def merge_pipeline(
         merge_method: Merge method (slerp, ties, dare, linear).
         t: Interpolation parameter. 0 = pure model_1, 1 = pure model_2.
         dtype: Data type for merged model (float16, bfloat16, float32).
+        registry_model_name: Name for the registered model (required if registering).
+        registry_address: Model Registry address (empty = skip registration).
 
     Example (SLERP with 80% Coder, 20% Instruct):
         model_1: Qwen/Qwen2.5-Coder-1.5B-Instruct
@@ -513,6 +529,26 @@ def merge_pipeline(
         eval_merged=eval_merged_task.output,
     )
     compare_task.set_caching_options(False)
+
+    # =========================================================================
+    # Step 8: Model Registry (optional)
+    # =========================================================================
+    model_registry_task = model_registry(
+        pvc_mount_path="/tmp",  # Not using PVC workspace in this pipeline
+        input_model=merge_task.outputs["output_model"],
+        registry_address=registry_address,
+        registry_port=8080,
+        model_name=registry_model_name,
+        model_version="1.0.0",
+        model_format_name="pytorch",
+        model_format_version="2.0",
+        author="merge-pipeline",
+        source_pipeline_name=PIPELINE_NAME,
+        source_pipeline_run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+        source_pipeline_run_name=dsl.PIPELINE_JOB_NAME_PLACEHOLDER,
+    )
+    model_registry_task.set_caching_options(False)
+    kfp.kubernetes.set_image_pull_policy(model_registry_task, "IfNotPresent")
 
 
 if __name__ == "__main__":
