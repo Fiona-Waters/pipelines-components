@@ -393,12 +393,10 @@ def merge_pipeline(
     """
     # Steps 1-2: Download models from HuggingFace (done once, reused for merge + eval)
     download_model1_task = download_model(model_id=model_1)
-    download_model1_task.set_display_name("1. Download Model 1")
     download_model1_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(download_model1_task, "IfNotPresent")
 
     download_model2_task = download_model(model_id=model_2)
-    download_model2_task.set_display_name("2. Download Model 2")
     download_model2_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(download_model2_task, "IfNotPresent")
 
@@ -410,7 +408,6 @@ def merge_pipeline(
         t=t,
         dtype=dtype,
     )
-    merge_task.set_display_name("3. Merge Models")
     merge_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(merge_task, "IfNotPresent")
     kfp.kubernetes.add_node_selector(merge_task, "nvidia.com/gpu.present", "true")
@@ -424,7 +421,6 @@ def merge_pipeline(
         model_artifact=download_model1_task.outputs["output_model"],
         questions_json=EVAL_QUESTIONS_JSON,
     )
-    eval_model1_task.set_display_name("4. Evaluate Model 1")
     eval_model1_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(eval_model1_task, "IfNotPresent")
     kfp.kubernetes.add_node_selector(eval_model1_task, "nvidia.com/gpu.present", "true")
@@ -437,7 +433,6 @@ def merge_pipeline(
         model_artifact=download_model2_task.outputs["output_model"],
         questions_json=EVAL_QUESTIONS_JSON,
     )
-    eval_model2_task.set_display_name("5. Evaluate Model 2")
     eval_model2_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(eval_model2_task, "IfNotPresent")
     kfp.kubernetes.add_node_selector(eval_model2_task, "nvidia.com/gpu.present", "true")
@@ -450,7 +445,6 @@ def merge_pipeline(
         model_artifact=merge_task.outputs["output_model"],
         questions_json=EVAL_QUESTIONS_JSON,
     )
-    eval_merged_task.set_display_name("6. Evaluate Merged Model")
     eval_merged_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(eval_merged_task, "IfNotPresent")
     kfp.kubernetes.add_node_selector(eval_merged_task, "nvidia.com/gpu.present", "true")
@@ -463,7 +457,6 @@ def merge_pipeline(
         eval_model2=eval_model2_task.output,
         eval_merged=eval_merged_task.output,
     )
-    compare_task.set_display_name("7. Compare Results")
     compare_task.set_caching_options(False)
 
 
