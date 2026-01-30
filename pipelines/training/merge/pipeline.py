@@ -22,7 +22,7 @@ from components.deployment.kubeflow_model_registry import (
 # =============================================================================
 # Pipeline Configuration
 # =============================================================================
-PIPELINE_NAME = "model-merge-pipeline"
+PIPELINE_NAME = "mergekit-llm-merge"
 
 # Evaluation questions - cycling race table analysis
 EVAL_QUESTIONS_JSON = """[
@@ -184,6 +184,9 @@ dtype: {dtype}
     output_model.metadata["model_1"] = model_1.metadata.get("model_id", "unknown")
     output_model.metadata["model_2"] = model_2.metadata.get("model_id", "unknown")
     output_model.metadata["t"] = str(t)
+    output_model.metadata["artifact_path"] = output_model.path  # S3 path for registry
+    
+    log.info(f"Model artifact path: {output_model.path}")
     return "merge completed"
 
 
@@ -430,9 +433,123 @@ def compare_evaluations(
     return report_text
 
 
+# =============================================================================
+# PVC Configuration
+# =============================================================================
+PVC_SIZE = "100Gi"
+PVC_STORAGE_CLASS = "nfs-csi"
+PVC_ACCESS_MODES = ["ReadWriteMany"]
+MODEL_PATH_IN_PVC = "/merged_model"
+
+
+@dsl.component(
+    base_image="python:3.11-slim",
+)
+def format_pvc_name(
+    run_name: str,
+) -> str:
+    """Format PVC name from pipeline run name.
+
+    Args:
+        run_name: Pipeline run name.
+
+    Returns:
+        Formatted PVC name with -pvc suffix.
+    """
+    import re
+    # Sanitize: lowercase, replace invalid chars with dash, max 63 chars for k8s names
+    sanitized = re.sub(r'[^a-z0-9-]', '-', run_name.lower())
+    sanitized = re.sub(r'-+', '-', sanitized).strip('-')
+    # Truncate to leave room for "-pvc" suffix (max 63 chars total)
+    max_len = 63 - 4  # 4 chars for "-pvc"
+    if len(sanitized) > max_len:
+        sanitized = sanitized[:max_len].rstrip('-')
+    return f"{sanitized}-pvc"
+
+
+@dsl.component(
+    base_image="python:3.11-slim",
+)
+def copy_model_to_pvc(
+    input_model: dsl.Input[dsl.Model],
+    pvc_mount_path: str,
+    model_subpath: str,
+) -> str:
+    """Copy model files from artifact storage to PVC and fix tokenizer config.
+
+    Args:
+        input_model: Input model artifact to copy.
+        pvc_mount_path: PVC mount path.
+        model_subpath: Subdirectory within PVC to store the model.
+
+    Returns:
+        Full path to the model within PVC.
+    """
+    import json
+    import logging
+    import os
+    import shutil
+
+    logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger("copy_model_to_pvc")
+
+    src_path = input_model.path
+    dst_path = os.path.join(pvc_mount_path, model_subpath.lstrip("/"))
+
+    log.info(f"Copying model from {src_path} to {dst_path}")
+
+    os.makedirs(dst_path, exist_ok=True)
+    
+    # Copy all files from source to destination
+    for item in os.listdir(src_path):
+        src_item = os.path.join(src_path, item)
+        dst_item = os.path.join(dst_path, item)
+        if os.path.isdir(src_item):
+            shutil.copytree(src_item, dst_item, dirs_exist_ok=True)
+        else:
+            shutil.copy2(src_item, dst_item)
+
+    # List copied files
+    copied_files = os.listdir(dst_path)
+    log.info(f"Copied {len(copied_files)} items: {copied_files[:10]}...")
+
+    # Fix tokenizer_config.json if extra_special_tokens is a list (vLLM compatibility)
+    tokenizer_config_path = os.path.join(dst_path, "tokenizer_config.json")
+    if os.path.exists(tokenizer_config_path):
+        try:
+            with open(tokenizer_config_path, "r") as f:
+                config = json.load(f)
+            
+            if "extra_special_tokens" in config:
+                extra = config["extra_special_tokens"]
+                if isinstance(extra, list):
+                    # Remove the field if it's a list (causes vLLM/transformers errors)
+                    log.info(f"Removing extra_special_tokens (was list with {len(extra)} items)")
+                    del config["extra_special_tokens"]
+                    
+                    with open(tokenizer_config_path, "w") as f:
+                        json.dump(config, f, indent=2)
+                    log.info("Fixed tokenizer_config.json for vLLM compatibility")
+        except Exception as e:
+            log.warning(f"Could not fix tokenizer config: {e}")
+
+    return dst_path
+
+
 @dsl.pipeline(
     name=PIPELINE_NAME,
-    description="Merge two LLM models using MergeKit with evaluation (SLERP, TIES, DARE, etc.)",
+    description="Merge two LLM models into a single model using MergeKit. Supports SLERP, TIES, DARE, and linear merge methods. Downloads models, merges weights, evaluates all three models, copies result to PVC, and optionally registers to Model Registry. Use this pipeline when users want to combine capabilities of two models (e.g., coding + instruction following).",
+    pipeline_config=dsl.PipelineConfig(
+            workspace=dsl.WorkspaceConfig(
+                size=PVC_SIZE,
+                kubernetes=dsl.KubernetesWorkspaceConfig(
+                    pvcSpecPatch={
+                        "accessModes": PVC_ACCESS_MODES,
+                        "storageClassName": PVC_STORAGE_CLASS,
+                    }
+                ),
+            ),
+        ),
 )
 def merge_pipeline(
     model_1: str = "Qwen/Qwen2.5-Coder-1.5B-Instruct",
@@ -531,10 +648,45 @@ def merge_pipeline(
     compare_task.set_caching_options(False)
 
     # =========================================================================
-    # Step 8: Model Registry (optional)
+    # Step 8: Format PVC name from run name
+    # =========================================================================
+    format_pvc_name_task = format_pvc_name(
+        run_name=dsl.PIPELINE_JOB_NAME_PLACEHOLDER,
+    )
+    format_pvc_name_task.set_caching_options(False)
+
+    # =========================================================================
+    # Step 9: Create PVC for model storage
+    # =========================================================================
+    create_pvc_task = kfp.kubernetes.CreatePVC(
+        pvc_name=format_pvc_name_task.output,
+        access_modes=PVC_ACCESS_MODES,
+        size=PVC_SIZE,
+        storage_class_name=PVC_STORAGE_CLASS,
+    )
+
+    # =========================================================================
+    # Step 10: Copy merged model to PVC
+    # =========================================================================
+    copy_model_task = copy_model_to_pvc(
+        input_model=merge_task.outputs["output_model"],
+        pvc_mount_path="/mnt/models",
+        model_subpath=MODEL_PATH_IN_PVC,
+    )
+    copy_model_task.after(create_pvc_task)
+    copy_model_task.set_caching_options(False)
+    kfp.kubernetes.set_image_pull_policy(copy_model_task, "IfNotPresent")
+    kfp.kubernetes.mount_pvc(
+        copy_model_task,
+        pvc_name=create_pvc_task.outputs["name"],
+        mount_path="/mnt/models",
+    )
+
+    # =========================================================================
+    # Step 11: Model Registry (optional)
     # =========================================================================
     model_registry_task = model_registry(
-        pvc_mount_path="/tmp",  # Not using PVC workspace in this pipeline
+        pvc_mount_path="/mnt/models",
         input_model=merge_task.outputs["output_model"],
         registry_address=registry_address,
         registry_port=8080,
@@ -546,9 +698,17 @@ def merge_pipeline(
         source_pipeline_name=PIPELINE_NAME,
         source_pipeline_run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
         source_pipeline_run_name=dsl.PIPELINE_JOB_NAME_PLACEHOLDER,
+        pvc_name=create_pvc_task.outputs["name"],
+        pvc_model_path=MODEL_PATH_IN_PVC,
     )
+    model_registry_task.after(copy_model_task)
     model_registry_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(model_registry_task, "IfNotPresent")
+    kfp.kubernetes.mount_pvc(
+        model_registry_task,
+        pvc_name=create_pvc_task.outputs["name"],
+        mount_path="/mnt/models",
+    )
 
 
 if __name__ == "__main__":

@@ -32,6 +32,11 @@ def kubeflow_model_registry(
     source_pipeline_run_id: str = "",
     source_pipeline_run_name: str = "",
     source_namespace: str = "",
+    # -------------------------------------------------------------------------
+    # PVC STORAGE FIELDS (optional - for models stored on PVC)
+    # -------------------------------------------------------------------------
+    pvc_name: str = "",
+    pvc_model_path: str = "",
 ) -> str:
     """Register model to Kubeflow Model Registry with full provenance tracking.
 
@@ -57,6 +62,8 @@ def kubeflow_model_registry(
         source_pipeline_run_id: Unique ID of the pipeline run.
         source_pipeline_run_name: Display name of the pipeline run.
         source_namespace: Namespace where pipeline runs (auto-detected if empty).
+        pvc_name: Name of PVC where model is stored (optional).
+        pvc_model_path: Path to model within the PVC (optional).
     """
     import os
 
@@ -71,7 +78,12 @@ def kubeflow_model_registry(
     resolved_model_name = model_name  # User's parameter takes precedence
     model_uri = ""
     base_model_name = None
-    if input_model:
+    
+    # If PVC info is provided, use PVC-based URI (takes precedence)
+    if pvc_name and pvc_model_path:
+        model_uri = f"pvc://{pvc_name}{pvc_model_path}"
+        print(f"\n  Using PVC storage: {pvc_name}:{pvc_model_path}")
+    elif input_model:
         meta = getattr(input_model, "metadata", {}) or {}
         base_model_name = meta.get("model_name")  # e.g., "Qwen/Qwen2.5-1.5B-Instruct"
         # Only use metadata name if user didn't provide one (kept default)
@@ -88,6 +100,9 @@ def kubeflow_model_registry(
         print(f"  Base Model: {base_model_name}")
     print(f"  Model Version: {model_version}")
     print(f"  Model URI: {model_uri}")
+    if pvc_name:
+        print(f"  PVC Name: {pvc_name}")
+        print(f"  PVC Model Path: {pvc_model_path}")
     print(f"  Registry: {registry_address}:{registry_port}")
 
     # Register to Model Registry
@@ -140,6 +155,12 @@ def kubeflow_model_registry(
             # Add base model info
             if base_model_name:
                 version_metadata["base_model"] = base_model_name
+
+            # Add PVC storage info
+            if pvc_name:
+                version_metadata["pvc_name"] = pvc_name
+            if pvc_model_path:
+                version_metadata["pvc_model_path"] = pvc_model_path
 
             # Add training metrics (hyperparameters)
             if input_metrics and getattr(input_metrics, "metadata", None):
