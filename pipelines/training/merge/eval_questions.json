@@ -1,0 +1,26 @@
+[
+  {
+    "question": "Which country had the most cyclists finish in the top 10?",
+    "answer": "Italy",
+    "category": "analysis",
+    "context": "cycling_table"
+  },
+  {
+    "question": "Which cyclist earned the most UCI ProTour points?",
+    "answer": "Alejandro Valverde",
+    "category": "analysis",
+    "context": "cycling_table"
+  },
+  {
+    "question": "How many cyclists finished with 's.t.' (same time as the winner)?",
+    "answer": "1",
+    "category": "analysis",
+    "context": "cycling_table"
+  },
+  {
+    "question": "List all Spanish (ESP) cyclists and their ranks.",
+    "answer": "Alejandro Valverde",
+    "category": "analysis",
+    "context": "cycling_table"
+  }
+]
