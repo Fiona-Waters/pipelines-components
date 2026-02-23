@@ -1,4 +1,4 @@
-name: finetuning
+name: osft
 stability: alpha
 dependencies:
   kubeflow:
@@ -14,12 +14,9 @@ dependencies:
 tags:
   - training
   - fine_tuning
-  - finetuning
   - osft
-  - sft
+  - orthogonal_subspace
   - llm
-  - language_model
-  - deprecated
-lastVerified: 2026-01-09T00:00:00Z
+lastVerified: 2026-02-23T00:00:00Z
 links:
   documentation: https://github.com/kubeflow/trainer

@@ -25,7 +25,7 @@ from components.deployment.kubeflow_model_registry import (
     kubeflow_model_registry as model_registry,
 )
 from components.evaluation.lm_eval import universal_llm_evaluator
-from components.training.finetuning import train_model
+from components.training.sft import train_model
 
 # =============================================================================
 # PVC Configuration (COMPILE-TIME settings)
@@ -143,27 +143,19 @@ def sft_minimal_pipeline(
         dataset=dataset_download_task.outputs["train_dataset"],
         # Model - SFT specific
         training_base_model=phase_02_train_man_model,
-        training_algorithm="SFT",  # Hardcoded for SFT pipeline
-        training_backend="instructlab-training",  # Hardcoded for SFT
-        training_unfreeze_rank_ratio=0.0,  # Not used by SFT
         # Hyperparameters
         training_effective_batch_size=phase_02_train_man_train_batch,
         training_max_tokens_per_gpu=phase_02_train_man_tokens,
         training_max_seq_len=phase_02_train_opt_max_seq_len,
         training_learning_rate=phase_02_train_opt_learning_rate,
-        training_target_patterns="",  # Not used by SFT
         training_seed=42,
         training_num_epochs=phase_02_train_man_epochs,
         # SFT optimizations
         training_use_liger=phase_02_train_opt_use_liger,
-        training_use_processed_dataset=False,
-        training_unmask_messages=False,
         # LR scheduler
         training_lr_scheduler="cosine",
-        training_lr_scheduler_kwargs="",
         # Saving (SFT-specific)
         training_checkpoint_at_epoch=True,
-        training_save_final_checkpoint=False,  # Not used by SFT
         training_save_samples=0,
         training_accelerate_full_state_at_epoch=False,
         training_fsdp_sharding_strategy=phase_02_train_opt_fsdp_sharding,

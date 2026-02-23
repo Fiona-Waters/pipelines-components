@@ -1,5 +1,11 @@
 """Training Component.
 
+.. deprecated::
+   This unified training component is deprecated and will be removed in the next release.
+   Use specialized components instead:
+   - components.training.osft.train_model for OSFT training
+   - components.training.sft.train_model for SFT training
+
 Reusable inline training component modeled after the OSFT notebook flow.
 - Configurable logging
 - Optional Kubernetes connection (remote or in-cluster)
