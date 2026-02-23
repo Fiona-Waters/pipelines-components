@@ -197,6 +197,7 @@ def train_model(
         "HF_DATASETS_CACHE": os.path.join(cache, "datasets"),
         "TRANSFORMERS_CACHE": os.path.join(cache, "transformers"),
         "NCCL_DEBUG": "INFO",
+        "PYTHONUNBUFFERED": "1",
     }
 
     def parse_kv(s: str) -> Dict[str, str]:

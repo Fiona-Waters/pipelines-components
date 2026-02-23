@@ -12,7 +12,7 @@
 
 ## Overview 🧾
 
-- **[LoRA](lora/)** - Low-Rank Adaptation fine-tuning with Unsloth backend
+- **[LoRA](../lora/)** - Low-Rank Adaptation fine-tuning with Unsloth backend
 - **[OSFT](../osft/)** - Orthogonal Subspace Fine-Tuning with mini-trainer backend
 - **[SFT](../sft/)** - Supervised Fine-Tuning with instructlab-training backend
 

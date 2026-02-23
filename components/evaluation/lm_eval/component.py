@@ -515,6 +515,9 @@ def universal_llm_evaluator(
     logger.info(f"Total tasks to evaluate: {len(task_dict)}")
 
     # --- 6. Load Model ---
+    # Use 'spawn' to avoid "Cannot re-initialize CUDA in forked subprocess" errors
+    os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+
     logger.info("Loading model with vLLM backend...")
     start_time = time.time()
 
