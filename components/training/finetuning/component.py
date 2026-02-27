@@ -190,7 +190,7 @@ def train_model(
     _api = _init_k8s()
 
     cache = os.path.join(pvc_path, ".cache", "huggingface")
-    denv: Dict[str, str] = {
+    default_env: Dict[str, str] = {
         "XDG_CACHE_HOME": "/tmp",
         "TRITON_CACHE_DIR": "/tmp/.triton",
         "HF_HOME": "/tmp/.cache/huggingface",
@@ -224,11 +224,11 @@ def train_model(
         log.info(f"Env: {sorted(m.keys())}")
         return m
 
-    menv = _cfg_env(training_envs, denv)
+    merged_env = _cfg_env(training_envs, default_env)
 
     hf_tok = os.environ.get("HF_TOKEN", "").strip()
     if hf_tok:
-        menv["HF_TOKEN"] = hf_tok
+        merged_env["HF_TOKEN"] = hf_tok
         os.environ["HF_TOKEN"] = hf_tok
         log.info("HF_TOKEN propagated")
     elif isinstance(training_base_model, str):
@@ -561,7 +561,7 @@ def train_model(
                 func_args=params,
                 algorithm=algo_val,
                 packages_to_install=[],
-                env=dict(menv),
+                env=dict(merged_env),
                 resources_per_node=resources,
             ),
             options=[
