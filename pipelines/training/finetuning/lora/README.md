@@ -51,6 +51,7 @@ Registers trained model to Kubeflow Model Registry
 | `phase_02_train_opt_lora_load_in_4bit` | `bool` | `True` | [QLoRA] Enable 4-bit quantization |
 | `phase_02_train_opt_lora_load_in_8bit` | `bool` | `False` | [QLoRA] Enable 8-bit quantization |
 | `phase_02_train_opt_lora_sample_packing` | `bool` | `False` | [LoRA] Pack multiple samples for efficiency |
+| `phase_02_train_opt_runtime` | `str` | `training-hub` | Name of the ClusterTrainingRuntime to use. |
 | `phase_03_eval_opt_batch` | `str` | `auto` | Eval batch size ('auto' or integer) |
 | `phase_03_eval_opt_gen_kwargs` | `dict` | `{}` | Generation params dict (max_tokens, temperature) |
 | `phase_03_eval_opt_limit` | `int` | `-1` | Max samples per task (-1 = all) |

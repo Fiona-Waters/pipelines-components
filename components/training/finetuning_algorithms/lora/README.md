@@ -47,6 +47,7 @@ Train model using LoRA (Low-Rank Adaptation). Outputs model artifact and metrics
 | `training_seed` | `Optional[int]` | `None` | Random seed for reproducibility. |
 | `training_use_liger` | `Optional[bool]` | `None` | Enable Liger kernel optimizations. |
 | `training_lr_scheduler` | `Optional[str]` | `None` | LR scheduler type (cosine, linear, etc.). Training_hub default: linear. |
+| `training_runtime` | `str` | `training-hub` | Name of the ClusterTrainingRuntime to use. |
 | `kubernetes_config` | `dsl.TaskConfig` | `None` | KFP TaskConfig for volumes/env/resources passthrough. |
 
 ## Outputs 📤
