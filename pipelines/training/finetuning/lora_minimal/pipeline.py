@@ -174,6 +174,7 @@ def lora_minimal_pipeline(
         # TODO: LoRA (unsloth backend) only supports single-node training.
         # Hardcoded to 1 until unsloth/training_hub add multi-node LoRA support.
         training_resource_num_workers=1,
+        training_runtime=phase_02_train_opt_runtime,
     )
     training_task.set_caching_options(False)
     kfp.kubernetes.set_image_pull_policy(training_task, "IfNotPresent")

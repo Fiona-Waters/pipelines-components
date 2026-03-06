@@ -68,6 +68,7 @@ def train_model(
     training_lr_scheduler_kwargs: str = "",
     training_save_final_checkpoint: Optional[bool] = None,
     training_fsdp_sharding_strategy: Optional[str] = None,
+    training_runtime: str = "training-hub",
     kubernetes_config: dsl.TaskConfig = None,
 ) -> str:
     """Train model using OSFT (Orthogonal Subspace Fine-Tuning). Outputs model artifact and metrics.
@@ -106,6 +107,7 @@ def train_model(
         training_lr_scheduler_kwargs: LR scheduler kwargs as key=val,key=val.
         training_save_final_checkpoint: Save final checkpoint after training.
         training_fsdp_sharding_strategy: FSDP sharding strategy.
+        training_runtime: Name of the ClusterTrainingRuntime to use.
         kubernetes_config: KFP TaskConfig for volumes/env/resources passthrough.
 
     Environment:
