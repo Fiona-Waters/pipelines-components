@@ -34,6 +34,7 @@ Registers trained model to Kubeflow Model Registry
 | `phase_02_train_opt_max_seq_len` | `int` | `8192` | Max sequence length in tokens |
 | `phase_02_train_opt_use_liger` | `bool` | `True` | Enable Liger kernel optimizations |
 | `phase_02_train_opt_lora_load_in_4bit` | `bool` | `True` | [QLoRA] Enable 4-bit quantization |
+| `phase_02_train_opt_runtime` | `str` | `training-hub` | Name of the ClusterTrainingRuntime to use. |
 | `phase_04_registry_opt_port` | `int` | `8080` | Model registry server port |
 
 ## Metadata 🗂️

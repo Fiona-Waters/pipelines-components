@@ -70,6 +70,7 @@ def train_model(
     training_seed: Optional[int] = None,
     training_use_liger: Optional[bool] = None,
     training_lr_scheduler: Optional[str] = None,
+    training_runtime: str = "training-hub",
     kubernetes_config: dsl.TaskConfig = None,
 ) -> str:
     """Train model using LoRA (Low-Rank Adaptation). Outputs model artifact and metrics.
@@ -112,6 +113,7 @@ def train_model(
         training_seed: Random seed for reproducibility.
         training_use_liger: Enable Liger kernel optimizations.
         training_lr_scheduler: LR scheduler type (cosine, linear, etc.). Training_hub default: linear.
+        training_runtime: Name of the ClusterTrainingRuntime to use.
         kubernetes_config: KFP TaskConfig for volumes/env/resources passthrough.
 
     Environment:
@@ -187,10 +189,10 @@ def train_model(
 
         def _select_runtime(c):
             for r in c.list_runtimes():
-                if getattr(r, "name", "") == "training-hub":
+                if getattr(r, "name", "") == training_runtime:
                     log.info(f"Runtime: {r}")
                     return r
-            raise RuntimeError("Runtime 'training-hub' not found")
+            raise RuntimeError(f"Runtime '{training_runtime}' not found")
 
         runtime = _select_runtime(client)
 
