@@ -18,7 +18,7 @@ _SHARED_DIR = os.path.join(os.path.dirname(__file__), "..", "shared")
 
 
 @dsl.component(
-    base_image="quay.io/opendatahub/odh-training-th04-cpu-torch29-py312-rhel9:cpu-3.3",
+    base_image="quay.io/opendatahub/odh-th06-cpu-torch291-py312:odh-3.4-ea2",
     packages_to_install=[
         "kubernetes",
         "olot",
